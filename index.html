@@ -148,9 +148,16 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
         // Firebase 설정 (환경 변수 우선, 없으면 비활성화 모드로 동작)
-        const firebaseConfigStr = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
-        const firebaseConfig = JSON.parse(firebaseConfigStr);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-gas-experiment';
+          const firebaseConfig = {
+  apiKey: "AIzaSyAvU7ZzN2kGrHBvT1WpmMmMUpumHmOgxIo",
+  authDomain: "gas-vol-exp.firebaseapp.com",
+  projectId: "gas-vol-exp",
+  storageBucket: "gas-vol-exp.firebasestorage.app",
+  messagingSenderId: "388120744329",
+  appId: "1:388120744329:web:f2bb8bc69a25ca17e31158",
+  measurementId: "G-GN8F57T9C0"
+};
+        const appId = '26gas_vol_exp';
 
         let app, auth, db, currentUser = null;
         let experimentsData = [];
