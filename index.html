@@ -50,9 +50,14 @@
             <!-- 왼쪽: 폼 영역 -->
             <div class="lg:col-span-4 space-y-6">
                 <form id="experimentForm" class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
-                    <div class="flex items-center gap-2 mb-6 pb-4 border-b border-gray-100">
-                        <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-                        <h2 class="text-lg font-semibold text-gray-700">실험팀 정보</h2>
+                    <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
+                        <div class="flex items-center gap-2">
+                            <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                            <h2 class="text-lg font-semibold text-gray-700">학생 정보</h2>
+                        </div>
+                        <select id="loadRecordSelect" class="text-sm font-medium bg-blue-50 border border-blue-200 text-blue-700 rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-100 transition-all max-w-[150px] md:max-w-[180px] truncate">
+                            <option value="">-- 내 기록 불러오기 --</option>
+                        </select>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4 mb-6">
@@ -71,12 +76,12 @@
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-600 mb-1">학생 1</label>
-                            <input type="text" id="student1" placeholder="이름" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all" />
+                            <label class="block text-sm font-medium text-gray-600 mb-1">번호</label>
+                            <input type="number" id="studentNum" placeholder="예: 1" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all" />
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-600 mb-1">학생 2</label>
-                            <input type="text" id="student2" placeholder="이름" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all" />
+                            <label class="block text-sm font-medium text-gray-600 mb-1">이름</label>
+                            <input type="text" id="studentName" placeholder="이름" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all" />
                         </div>
                     </div>
 
@@ -139,22 +144,17 @@
     <!-- Firebase 및 로직 처리 스크립트 (모듈 사용) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, doc, updateDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
         // Firebase 설정 (환경 변수 우선, 없으면 비활성화 모드로 동작)
-        const firebaseConfig = {
-  apiKey: "AIzaSyAvU7ZzN2kGrHBvT1WpmMmMUpumHmOgxIo",
-  authDomain: "gas-vol-exp.firebaseapp.com",
-  projectId: "gas-vol-exp",
-  storageBucket: "gas-vol-exp.firebasestorage.app",
-  messagingSenderId: "388120744329",
-  appId: "1:388120744329:web:f2bb8bc69a25ca17e31158",
-  measurementId: "G-GN8F57T9C0"
-};
-        const appId = '26gas_vol_exp';
+        const firebaseConfigStr = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
+        const firebaseConfig = JSON.parse(firebaseConfigStr);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-gas-experiment';
+
         let app, auth, db, currentUser = null;
         let experimentsData = [];
+        let currentEditId = null; // 현재 불러와서 확인/수정 중인 기록 ID
 
         // 토스트 알림 함수
         function showNotification(message, type = 'success') {
@@ -201,14 +201,78 @@
                     const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'gas-experiments');
                     onSnapshot(colRef, (snapshot) => {
                         experimentsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        experimentsData.sort((a, b) => a.classNum - b.classNum);
+                        experimentsData.sort((a, b) => {
+                            if (a.classNum !== b.classNum) return a.classNum - b.classNum;
+                            return (a.studentNum || 0) - (b.studentNum || 0);
+                        });
                         document.getElementById('experimentCount').innerText = experimentsData.length;
+                        updateLoadSelect(); // 데이터가 바뀔 때마다 드롭다운 목록도 업데이트
                     }, (error) => {
                         console.error("데이터 읽기 에러:", error);
                     });
                 }
             });
         }
+
+        // 저장된 기록 드롭다운 업데이트 함수
+        function updateLoadSelect() {
+            const select = document.getElementById('loadRecordSelect');
+            if (!select) return;
+            const currentVal = select.value;
+            select.innerHTML = '<option value="">-- 내 기록 불러오기 --</option>';
+            
+            experimentsData.forEach(exp => {
+                const opt = document.createElement('option');
+                opt.value = exp.id;
+                opt.innerText = `${exp.classNum}반 ${exp.studentNum || ''}번 ${exp.studentName || ''}`;
+                select.appendChild(opt);
+            });
+            
+            // 기존 선택 유지 처리
+            if (currentVal && experimentsData.some(e => e.id === currentVal)) {
+                select.value = currentVal;
+            } else if (currentEditId && experimentsData.some(e => e.id === currentEditId)) {
+                select.value = currentEditId;
+            }
+        }
+
+        // 드롭다운에서 기록 선택 시 폼에 불러오기
+        document.getElementById('loadRecordSelect').addEventListener('change', (e) => {
+            const recordId = e.target.value;
+            currentEditId = recordId;
+            const submitBtn = document.getElementById('submitBtn');
+
+            if (!recordId) {
+                // 선택 해제 시 새 입력 모드로 폼 초기화
+                document.getElementById('studentNum').value = '';
+                document.getElementById('studentName').value = '';
+                volumes.forEach(vol => {
+                    if (vol !== 30) document.getElementById(`vol_${vol}`).value = '';
+                    else document.getElementById(`vol_${vol}`).value = '1013';
+                });
+                submitBtn.innerHTML = `<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg> 결과 저장하기`;
+                updateUI();
+                return;
+            }
+
+            // 기록 불러와서 폼에 채우기
+            const record = experimentsData.find(exp => exp.id === recordId);
+            if (record) {
+                document.getElementById('grade').value = record.grade || 6;
+                document.getElementById('classNum').value = record.classNum || 1;
+                document.getElementById('studentNum').value = record.studentNum || '';
+                document.getElementById('studentName').value = record.studentName || '';
+                
+                volumes.forEach(vol => {
+                    document.getElementById(`vol_${vol}`).value = record.pressures && record.pressures[vol] ? record.pressures[vol] : '';
+                });
+                
+                // 버튼을 '결과 수정하기'로 변경
+                submitBtn.innerHTML = `<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg> 결과 수정하기`;
+                updateUI();
+                showNotification('기록을 화면에 불러왔습니다.', 'success');
+            }
+        });
 
         // 초기 화면 세팅: 압력 입력칸
         const volumes = [15, 20, 25, 30, 35, 40, 45];
@@ -336,11 +400,12 @@
                 return;
             }
 
-            const student1 = document.getElementById('student1').value.trim();
-            const student2 = document.getElementById('student2').value.trim();
+            const studentNum = document.getElementById('studentNum').value.trim();
+            const studentName = document.getElementById('studentName').value.trim();
             const baseP = document.getElementById('vol_30').value;
 
-            if (!student1) return showNotification('최소 1명의 학생 이름을 입력해주세요.', 'error');
+            if (!studentNum) return showNotification('번호를 입력해주세요.', 'error');
+            if (!studentName) return showNotification('이름을 입력해주세요.', 'error');
             if (!baseP) return showNotification('30mL의 기준 압력값을 입력해주세요.', 'error');
 
             const submitBtn = document.getElementById('submitBtn');
@@ -354,22 +419,39 @@
                     pressures[vol] = val ? Number(val) : null;
                 });
 
-                const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'gas-experiments');
-                await addDoc(colRef, {
-                    grade: Number(document.getElementById('grade').value),
-                    classNum: Number(document.getElementById('classNum').value),
-                    student1: student1,
-                    student2: student2,
-                    pressures: pressures,
-                    createdAt: serverTimestamp(),
-                    userId: currentUser.uid
-                });
-
-                showNotification('실험 결과가 성공적으로 저장되었습니다!');
+                if (currentEditId) {
+                    // 1) 불러온 기록을 수정하는 경우
+                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'gas-experiments', currentEditId);
+                    await updateDoc(docRef, {
+                        grade: Number(document.getElementById('grade').value),
+                        classNum: Number(document.getElementById('classNum').value),
+                        studentNum: Number(studentNum),
+                        studentName: studentName,
+                        pressures: pressures
+                    });
+                    showNotification('실험 결과가 성공적으로 수정되었습니다!');
+                } else {
+                    // 2) 완전히 새로 저장하는 경우
+                    const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'gas-experiments');
+                    await addDoc(colRef, {
+                        grade: Number(document.getElementById('grade').value),
+                        classNum: Number(document.getElementById('classNum').value),
+                        studentNum: Number(studentNum),
+                        studentName: studentName,
+                        pressures: pressures,
+                        createdAt: serverTimestamp(),
+                        userId: currentUser.uid
+                    });
+                    showNotification('실험 결과가 성공적으로 저장되었습니다!');
+                }
                 
-                // 폼 초기화
-                document.getElementById('student1').value = '';
-                document.getElementById('student2').value = '';
+                // 폼 초기화 (새로운 입력 대기 상태로 전환)
+                currentEditId = null;
+                const select = document.getElementById('loadRecordSelect');
+                if(select) select.value = '';
+
+                document.getElementById('studentNum').value = '';
+                document.getElementById('studentName').value = '';
                 volumes.forEach(vol => {
                     if (vol !== 30) document.getElementById(`vol_${vol}`).value = '';
                 });
@@ -392,15 +474,15 @@
             }
 
             let csvContent = '\uFEFF'; // BOM for Excel Korean support
-            csvContent += '학년,반,학생1,학생2,15mL 압력(hPa),20mL 압력(hPa),25mL 압력(hPa),30mL 압력(hPa),35mL 압력(hPa),40mL 압력(hPa),45mL 압력(hPa),기록일시\n';
+            csvContent += '학년,반,번호,이름,15mL 압력(hPa),20mL 압력(hPa),25mL 압력(hPa),30mL 압력(hPa),35mL 압력(hPa),40mL 압력(hPa),45mL 압력(hPa),기록일시\n';
 
             experimentsData.forEach(exp => {
                 const dateStr = exp.createdAt ? new Date(exp.createdAt.toDate()).toLocaleString('ko-KR') : '';
                 const row = [
                     exp.grade,
                     exp.classNum,
-                    `"${exp.student1 || ''}"`,
-                    `"${exp.student2 || ''}"`,
+                    exp.studentNum || '',
+                    `"${exp.studentName || ''}"`,
                     exp.pressures['15'] || '',
                     exp.pressures['20'] || '',
                     exp.pressures['25'] || '',
