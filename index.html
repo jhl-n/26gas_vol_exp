@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>기체의 압력과 부피 변화 실험</title>
+    <!-- Tailwind CSS (스타일링) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js (그래프) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700&display=swap');
+        body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif; }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-50 p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto space-y-6">
+        <!-- 헤더 영역 -->
+        <header class="bg-white rounded-2xl shadow-sm p-6 flex flex-col md:flex-row items-center justify-between border border-gray-100">
+            <div class="flex items-center gap-4">
+                <div class="p-3 bg-blue-50 text-blue-600 rounded-xl">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-800">압력 변화에 따른 기체의 부피 변화</h1>
+                    <p class="text-gray-500 mt-1">6학년 과학 실험 결과 기록장</p>
+                </div>
+            </div>
+            <div class="mt-4 md:mt-0">
+                <button id="downloadBtn" class="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors font-medium">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    전체 데이터 다운로드 (Excel)
+                </button>
+            </div>
+        </header>
+
+        <!-- 알림 메시지 (토스트) -->
+        <div id="toast" style="display: none; opacity: 0;" class="fixed top-4 right-4 z-50 items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-white transition-opacity duration-300">
+            <span id="toastIcon"></span>
+            <span id="toastMessage"></span>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- 왼쪽: 폼 영역 -->
+            <div class="lg:col-span-4 space-y-6">
+                <form id="experimentForm" class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+                    <div class="flex items-center gap-2 mb-6 pb-4 border-b border-gray-100">
+                        <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                        <h2 class="text-lg font-semibold text-gray-700">실험팀 정보</h2>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">학년</label>
+                            <input type="number" id="grade" value="6" readonly class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-gray-500 outline-none"/>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">반</label>
+                            <select id="classNum" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all">
+                                <option value="1">1반</option>
+                                <option value="2">2반</option>
+                                <option value="3">3반</option>
+                                <option value="4">4반</option>
+                                <option value="5">5반</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">학생 1</label>
+                            <input type="text" id="student1" placeholder="이름" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">학생 2</label>
+                            <input type="text" id="student2" placeholder="이름" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all" />
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 mb-6 pb-4 border-b border-gray-100 mt-8">
+                        <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                        <h2 class="text-lg font-semibold text-gray-700">압력 측정값 입력</h2>
+                    </div>
+
+                    <div class="space-y-3 mb-8" id="pressureInputs">
+                        <!-- JS에서 동적 생성됨 -->
+                    </div>
+
+                    <button type="submit" id="submitBtn" class="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                        결과 저장하기
+                    </button>
+                </form>
+            </div>
+
+            <!-- 오른쪽: 결과 표 및 그래프 -->
+            <div class="lg:col-span-8 space-y-6">
+                <!-- 결과 표 -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="p-4 bg-gray-50 border-b border-gray-100">
+                        <h3 class="font-semibold text-gray-700">측정 결과 요약표</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="text-xs text-gray-600 bg-gray-50/50 uppercase">
+                                <tr>
+                                    <th class="px-6 py-4 font-medium">구분</th>
+                                    <th class="px-6 py-4 font-medium">주사기 부피 (mL)</th>
+                                    <th class="px-6 py-4 font-medium text-right">측정된 압력값 (hPa)</th>
+                                    <th class="px-6 py-4 font-medium text-center">압력 증감 비율 (분수)</th>
+                                    <th class="px-6 py-4 font-medium text-center">압력 증감 비율 (소수)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resultTableBody">
+                                <!-- JS에서 동적 생성됨 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 그래프 -->
+                <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+                    <h3 class="font-semibold text-gray-700 mb-6">부피에 따른 압력 변화 그래프</h3>
+                    <div class="h-[400px] w-full relative">
+                        <canvas id="pressureChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-8 text-center text-sm text-gray-500">
+            현재 <span id="experimentCount" class="font-semibold text-blue-600">0</span>개의 실험 결과가 데이터베이스에 저장되어 있습니다.
+        </div>
+    </div>
+
+    <!-- Firebase 및 로직 처리 스크립트 (모듈 사용) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        // Firebase 설정 (환경 변수 우선, 없으면 비활성화 모드로 동작)
+        const firebaseConfigStr = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
+        const firebaseConfig = JSON.parse(firebaseConfigStr);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-gas-experiment';
+
+        let app, auth, db, currentUser = null;
+        let experimentsData = [];
+
+        // 토스트 알림 함수
+        function showNotification(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            
+            toast.className = `fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-white transition-opacity duration-300 ${type === 'success' ? 'bg-emerald-500' : 'bg-red-500'}`;
+            icon.innerHTML = type === 'success' 
+                ? `<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>`
+                : `<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+            
+            document.getElementById('toastMessage').innerText = message;
+            toast.style.display = 'flex';
+            setTimeout(() => toast.style.opacity = '1', 10); // fade in
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.style.display = 'none', 300);
+            }, 3000);
+        }
+
+        // Firebase 초기화
+        if (Object.keys(firebaseConfig).length > 0) {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+
+            const initAuth = async () => {
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                } catch (error) {
+                    console.error('인증 오류:', error);
+                }
+            };
+            initAuth();
+
+            onAuthStateChanged(auth, (user) => {
+                currentUser = user;
+                if (user) {
+                    const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'gas-experiments');
+                    onSnapshot(colRef, (snapshot) => {
+                        experimentsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        experimentsData.sort((a, b) => a.classNum - b.classNum);
+                        document.getElementById('experimentCount').innerText = experimentsData.length;
+                    }, (error) => {
+                        console.error("데이터 읽기 에러:", error);
+                    });
+                }
+            });
+        }
+
+        // 초기 화면 세팅: 압력 입력칸
+        const volumes = [15, 20, 25, 30, 35, 40, 45];
+        const inputsContainer = document.getElementById('pressureInputs');
+        
+        volumes.forEach(vol => {
+            const isBase = vol === 30;
+            const bgClass = isBase ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200';
+            const defaultVal = isBase ? '1013' : '';
+            
+            const html = `
+                <div class="flex items-center justify-between p-3 rounded-lg border ${bgClass}">
+                    <label class="font-medium text-gray-700 w-24">
+                        ${vol} mL ${isBase ? '<span class="text-xs text-blue-600 block">기본 설정</span>' : ''}
+                    </label>
+                    <div class="flex items-center gap-2 flex-1">
+                        <input type="number" id="vol_${vol}" value="${defaultVal}" placeholder="측정값" 
+                            class="pressure-input w-full bg-white border border-gray-300 rounded-md px-3 py-2 text-right outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all" />
+                        <span class="text-gray-500 text-sm w-8">hPa</span>
+                    </div>
+                </div>
+            `;
+            inputsContainer.insertAdjacentHTML('beforeend', html);
+        });
+
+        // Chart.js 초기화
+        const ctx = document.getElementById('pressureChart').getContext('2d');
+        const pressureChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['15mL', '20mL', '25mL', '기준(30mL)', '35mL', '40mL', '45mL'],
+                datasets: [{
+                    label: '측정된 압력 (hPa)',
+                    data: [null, null, null, 1013, null, null, null],
+                    backgroundColor: '#3b82f6',
+                    borderRadius: 6,
+                    barPercentage: 0.6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `압력: ${context.parsed.y} hPa`
+                        }
+                    }
+                },
+                scales: {
+                    y: { beginAtZero: true },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        // 최대공약수 함수
+        const getGCD = (a, b) => {
+            if (!b) return a;
+            return getGCD(b, a % b);
+        };
+
+        // 데이터 계산 및 표/그래프 업데이트 함수
+        function updateUI() {
+            const baseInput = document.getElementById('vol_30').value;
+            const basePressure = parseFloat(baseInput) || 0;
+            const tbody = document.getElementById('resultTableBody');
+            tbody.innerHTML = '';
+            
+            const chartDataArray = [];
+
+            volumes.forEach(vol => {
+                const val = document.getElementById(`vol_${vol}`).value;
+                const p = parseFloat(val);
+                
+                let fraction = '-';
+                let decimal = '-';
+
+                if (!isNaN(p) && basePressure > 0) {
+                    const gcd = getGCD(Math.round(p), Math.round(basePressure));
+                    fraction = `${Math.round(p) / gcd}/${Math.round(basePressure) / gcd}`;
+                    decimal = (p / basePressure).toFixed(1);
+                }
+
+                chartDataArray.push(isNaN(p) ? null : p);
+
+                const tr = document.createElement('tr');
+                const isBase = vol === 30;
+                tr.className = `border-b border-gray-50 hover:bg-gray-50/50 transition-colors ${isBase ? 'bg-blue-50/30' : ''}`;
+                
+                const typeText = vol < 30 ? '피스톤 누를 때' : vol > 30 ? '피스톤 당길 때' : '처음값';
+                const pText = isNaN(p) ? '-' : p;
+                
+                tr.innerHTML = `
+                    <td class="px-6 py-3 font-medium text-gray-500">${typeText}</td>
+                    <td class="px-6 py-3 font-semibold text-gray-800">${vol} mL</td>
+                    <td class="px-6 py-3 text-right font-medium text-blue-600">${pText}</td>
+                    <td class="px-6 py-3 text-center text-gray-600">
+                        ${fraction !== '-' ? `<span class="px-2 py-1 bg-gray-100 rounded-md font-mono text-sm">${fraction}</span>` : '-'}
+                    </td>
+                    <td class="px-6 py-3 text-center text-gray-600">
+                        ${decimal !== '-' ? `<span class="px-2 py-1 bg-gray-100 rounded-md font-mono text-sm">약 ${decimal}배</span>` : '-'}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // 차트 갱신
+            pressureChart.data.datasets[0].data = chartDataArray;
+            pressureChart.update();
+        }
+
+        // 입력칸 이벤트 리스너 등록
+        document.querySelectorAll('.pressure-input').forEach(input => {
+            input.addEventListener('input', updateUI);
+        });
+
+        // 폼 제출 이벤트 (데이터 저장)
+        document.getElementById('experimentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!db || !currentUser) {
+                showNotification('데이터베이스에 연결되어 있지 않습니다. (오프라인 모드)', 'error');
+                return;
+            }
+
+            const student1 = document.getElementById('student1').value.trim();
+            const student2 = document.getElementById('student2').value.trim();
+            const baseP = document.getElementById('vol_30').value;
+
+            if (!student1) return showNotification('최소 1명의 학생 이름을 입력해주세요.', 'error');
+            if (!baseP) return showNotification('30mL의 기준 압력값을 입력해주세요.', 'error');
+
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '저장 중...';
+
+            try {
+                const pressures = {};
+                volumes.forEach(vol => {
+                    const val = document.getElementById(`vol_${vol}`).value;
+                    pressures[vol] = val ? Number(val) : null;
+                });
+
+                const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'gas-experiments');
+                await addDoc(colRef, {
+                    grade: Number(document.getElementById('grade').value),
+                    classNum: Number(document.getElementById('classNum').value),
+                    student1: student1,
+                    student2: student2,
+                    pressures: pressures,
+                    createdAt: serverTimestamp(),
+                    userId: currentUser.uid
+                });
+
+                showNotification('실험 결과가 성공적으로 저장되었습니다!');
+                
+                // 폼 초기화
+                document.getElementById('student1').value = '';
+                document.getElementById('student2').value = '';
+                volumes.forEach(vol => {
+                    if (vol !== 30) document.getElementById(`vol_${vol}`).value = '';
+                });
+                document.getElementById('vol_30').value = '1013';
+                updateUI();
+
+            } catch (error) {
+                console.error("저장 오류:", error);
+                showNotification('저장 중 오류가 발생했습니다.', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg> 결과 저장하기`;
+            }
+        });
+
+        // CSV 엑셀 다운로드 이벤트
+        document.getElementById('downloadBtn').addEventListener('click', () => {
+            if (experimentsData.length === 0) {
+                return showNotification('다운로드할 데이터가 없습니다.', 'error');
+            }
+
+            let csvContent = '\uFEFF'; // BOM for Excel Korean support
+            csvContent += '학년,반,학생1,학생2,15mL 압력(hPa),20mL 압력(hPa),25mL 압력(hPa),30mL 압력(hPa),35mL 압력(hPa),40mL 압력(hPa),45mL 압력(hPa),기록일시\n';
+
+            experimentsData.forEach(exp => {
+                const dateStr = exp.createdAt ? new Date(exp.createdAt.toDate()).toLocaleString('ko-KR') : '';
+                const row = [
+                    exp.grade,
+                    exp.classNum,
+                    `"${exp.student1 || ''}"`,
+                    `"${exp.student2 || ''}"`,
+                    exp.pressures['15'] || '',
+                    exp.pressures['20'] || '',
+                    exp.pressures['25'] || '',
+                    exp.pressures['30'] || '',
+                    exp.pressures['35'] || '',
+                    exp.pressures['40'] || '',
+                    exp.pressures['45'] || '',
+                    `"${dateStr}"`
+                ];
+                csvContent += row.join(',') + '\n';
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = '기체_압력부피_실험결과.csv';
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        // 초기 화면 렌더링
+        updateUI();
+    </script>
+</body>
+</html>
